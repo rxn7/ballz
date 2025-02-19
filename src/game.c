@@ -1,9 +1,7 @@
 #include "game.h"
-#include "world.h"
 
 #include <math.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #include <SDL3/SDL_render.h>
 
@@ -21,7 +19,16 @@ void game_init(struct Game *game) {
 	SDL_SetRenderLogicalPresentation(game->renderer, 500, 500, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 	SDL_assert_always(game->renderer != nullptr);
 
-	world_init(&game->world, game, 1000000);
+	world_init(&game->world, game, 10000);
+	for(uint32_t i = 0; i < game->world.balls_capacity; ++i) {
+		struct Ball ball = {
+			.x = rand() % game->logical_width,
+			.y = rand() % game->logical_height,
+			.angle_radians = 2.0f * M_PI * (float)rand() / (float)RAND_MAX,
+		};
+
+		world_add_ball(&game->world, &ball);
+	}
 }
 
 void game_destroy(struct Game *game) {
@@ -37,6 +44,7 @@ void game_start(struct Game *game) {
 	uint64_t last_frame_tick = now;
 	while(game->is_window_open) {
 		now = SDL_GetPerformanceCounter();
+		const float dt = (now - last_frame_tick) / (float)SDL_GetPerformanceFrequency();
 		last_frame_tick = now;
 
 		SDL_Event event;
@@ -44,7 +52,7 @@ void game_start(struct Game *game) {
 			game_handle_event(game, &event);
 		}
 
-		world_simulate(&game->world);
+		world_simulate(&game->world, dt);
 		game_render(game);
 	}
 }
@@ -80,13 +88,12 @@ void game_handle_event(struct Game *game, const SDL_Event *event) {
 	case SDL_EVENT_MOUSE_BUTTON_DOWN:
 		switch(event->button.button) {
 		case SDL_BUTTON_LEFT:
-			const float angle = rand() / (float)RAND_MAX;
-			const struct Ball ball = (struct Ball) {
+			struct Ball ball = (struct Ball) {
 				.x = game->mouse_x,
 				.y = game->mouse_y,
-				.vx = (sinf(angle * M_PI) * 2.0 - 1.0f) * 0.01,
-				.vy = cosf(angle * M_PI) * 0.01
+				.angle_radians = rand() / (float)RAND_MAX * M_PI * 2.0f
 			};
+			
 			world_add_ball(&game->world, &ball);
 			break;
 		}

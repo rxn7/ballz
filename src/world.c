@@ -1,31 +1,33 @@
 #include "world.h"
 #include "game.h"
 #include "ball.h"
+#include "timer.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 void world_init(struct World *world, struct Game *game, uint32_t balls_capacity) {
 	world->game = game;
-	world->balls = malloc(sizeof(struct Ball) * balls_capacity);
+	world->balls = calloc(balls_capacity, sizeof(struct Ball));
 	world->balls_count = 0;
 
 	world->balls_capacity = balls_capacity;
-	world->balls_rects = malloc(sizeof(SDL_FRect) * balls_capacity);
+	world->balls_points = calloc(world->balls_capacity * BALL_RENDER_SEGMENTS, sizeof(SDL_FPoint));
 
 	world_print_memory_usage(world);
 }
 
 void world_destroy(struct World *world) {
 	free(world->balls);
-	free(world->balls_rects);
+	free(world->balls_points);
 }
 
 void world_add_ball(struct World *world, const struct Ball *ball) {
 	if(world->balls_count >= world->balls_capacity) {
 		world->balls_capacity *= 2; // TODO: benchmark if this is optimal
 		world->balls = realloc(world->balls, sizeof(struct Ball) * world->balls_capacity);
-		world->balls_rects = realloc(world->balls_rects, sizeof(SDL_FRect) * world->balls_capacity);
+		world->balls_points = realloc(world->balls_points, sizeof(SDL_FPoint) * world->balls_capacity * BALL_RENDER_SEGMENTS);
 
 #ifndef NDEBUG
 		world_print_memory_usage(world);
@@ -35,52 +37,123 @@ void world_add_ball(struct World *world, const struct Ball *ball) {
 	world->balls[world->balls_count++] = *ball;
 }
 
-void world_simulate(struct World *world) {
+void world_simulate(struct World *world, float dt) {
+	struct Timer simulate_timer;
+	timer_start(&simulate_timer);
+
+	const float COLLISION_MARGIN = 0.01f;
+
 	for(uint32_t i = 0; i < world->balls_count; ++i) {
-		struct Ball *ball = &world->balls[i];
-		ball->x += ball->vx;
-		ball->y += ball->vy;
+		struct Ball *a = &world->balls[i];
 
-		bool x_collided = false;
-		if(ball->x - BALL_RADIUS <= 0.0f) {
-			x_collided = true;
-			ball->x = BALL_RADIUS + 0.01f; // TODO: Define epsilon
-		} else if(ball->x + BALL_RADIUS > world->game->logical_width) {
-			x_collided = true;
-			ball->x = world->game->logical_width - BALL_RADIUS - 0.01f; // TODO: Define epsilon
-		}
+		// ball collisions
+		for(uint32_t j = 0; j < world->balls_count; ++j) {
+			if(i == j) {
+				continue;
+			}
 
-		bool y_collided = false;
-		if(ball->y - BALL_RADIUS <= 0.0f) {
-			y_collided = true;
-			ball->y = BALL_RADIUS + 0.01f; // TODO: Define epsilon
-		} else if(ball->y + BALL_RADIUS > world->game->logical_height) {
-			y_collided = true;
-			ball->y = world->game->logical_height - BALL_RADIUS - 0.01f; // TODO: Define epsilon
-		}
+			struct Ball *b = &world->balls[j];
 
-		if(x_collided) {
-			ball->vx *= -1.0f;
-		}
-		if(y_collided) {
-			ball->vy *= -1.0f;
+			const float delta_x = a->x - b->x;
+			const float delta_y = a->y - b->y;
+
+			const float distance_sqr = delta_x * delta_x + delta_y * delta_y;
+			if(distance_sqr > (BALL_RADIUS * 2.0) * (BALL_RADIUS * 2.0)) {
+				continue;
+			}
+
+			const float distance = sqrtf(distance_sqr);
+			if(distance < COLLISION_MARGIN) {
+				continue;
+			}
+
+			const float overlap = (distance - BALL_RADIUS * 2.0f) * 0.5f / distance;
+			const float overlap_x = overlap * delta_x;
+			const float overlap_y = overlap * delta_y;
+
+			a->x -= overlap_x;
+			a->y -= overlap_y;
+			b->x += overlap_x;
+			b->y += overlap_y;
+
+			const float normal_x = delta_x / distance; 
+			const float normal_y = delta_y / distance; 
+
+			float a_direction_x, a_direction_y;
+			float b_direction_x, b_direction_y;
+			ball_get_direction(a, &a_direction_x, &a_direction_y);
+			ball_get_direction(b, &b_direction_x, &b_direction_y);
+
+			const float dot_product_a = a_direction_x * normal_x + a_direction_y * normal_y;
+			const float dot_product_b = b_direction_x * normal_x + b_direction_y * normal_y;
+
+			const float reflected_a_direction_x = a_direction_x - 2.0f * normal_x * dot_product_a;
+			const float reflected_a_direction_y = a_direction_y - 2.0f * normal_y * dot_product_a;
+			const float reflected_b_direction_x = b_direction_x - 2.0f * normal_x * dot_product_b;
+			const float reflected_b_direction_y = b_direction_y - 2.0f * normal_y * dot_product_b;
+
+			ball_set_direction(a, reflected_a_direction_x, reflected_a_direction_y);
+			ball_set_direction(b, reflected_b_direction_x, reflected_b_direction_y);
 		}
 	}
+
+	for(uint32_t i = 0; i < world->balls_count; ++i) {
+		struct Ball *ball = &world->balls[i];
+
+		// wall collisions
+		if(ball->x - BALL_RADIUS <= 0.0f) {
+			ball_flip_angle_horizontally(ball);
+			ball->x = BALL_RADIUS + COLLISION_MARGIN; 
+		} else if(ball->x + BALL_RADIUS > world->game->logical_width) {
+			ball_flip_angle_horizontally(ball);
+			ball->x = world->game->logical_width - BALL_RADIUS - COLLISION_MARGIN;
+		}
+
+		if(ball->y - BALL_RADIUS <= 0.0f) {
+			ball_flip_angle_vertically(ball);
+			ball->y = BALL_RADIUS + COLLISION_MARGIN;
+		} else if(ball->y + BALL_RADIUS > world->game->logical_height) {
+			ball_flip_angle_vertically(ball);
+			ball->y = world->game->logical_height - BALL_RADIUS - COLLISION_MARGIN;
+		}
+
+		float dx, dy;
+		ball_get_direction(ball, &dx, &dy);
+
+		ball->x += dx * BALL_SPEED * dt;
+		ball->y += dy * BALL_SPEED * dt;
+	}
+
+
+	timer_print_elapsed(&simulate_timer, "world::simulate");
 }
 
 void world_render(struct World *world, SDL_Renderer *renderer) {
+	struct Timer render_timer;
+	timer_start(&render_timer);
+
+	memset(world->balls_points, 0, sizeof(SDL_FPoint) * world->balls_count * BALL_RENDER_SEGMENTS);
+
 	for(uint32_t i = 0; i < world->balls_count; ++i) {
 		const struct Ball *ball = &world->balls[i];
-		world->balls_rects[i] = (SDL_FRect) {
-			.x = ball->x - BALL_RADIUS,
-			.y = ball->y - BALL_RADIUS,
-			.w = BALL_RADIUS * 2,
-			.h = BALL_RADIUS * 2
-		};
+		for(uint32_t s = 0; s < BALL_RENDER_SEGMENTS; ++s) {
+			float angle = s * 2.0f * M_PI / BALL_RENDER_SEGMENTS;
+
+			world->balls_points[i * BALL_RENDER_SEGMENTS + s] = (SDL_FPoint) {
+				.x = (ball->x + BALL_RADIUS * cosf(angle)),
+				.y = (ball->y + BALL_RADIUS * sinf(angle)),
+			};
+		}
 	}
 
+
+	timer_print_elapsed(&render_timer, "world::render::create_rects");
+	timer_restart(&render_timer);
+
 	SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-	SDL_RenderFillRects(renderer, world->balls_rects, world->balls_count);
+	SDL_RenderPoints(renderer, world->balls_points, world->balls_count * BALL_RENDER_SEGMENTS + 1);
+
+	timer_print_elapsed(&render_timer, "world::render::fill_rects");
 }
 
 void world_print_memory_usage(struct World *world) {

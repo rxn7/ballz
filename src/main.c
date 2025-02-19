@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-
-int main(int argc, const char **argv) {
+int main() {
 	srand(time(NULL));
 
 	struct Game game;
