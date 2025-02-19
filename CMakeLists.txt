@@ -9,7 +9,7 @@ add_executable(ballz ${sources})
 
 # Link sdl3
 add_subdirectory(vendor/sdl EXCLUDE_FROM_ALL)
-target_link_libraries(ballz PRIVATE SDL3::SDL3)
+target_link_libraries(ballz PRIVATE SDL3::SDL3 m)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -Wpedantic")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
