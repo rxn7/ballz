@@ -11,8 +11,6 @@ struct World {
 	struct Ball *balls;
 	uint32_t balls_count;
 	uint32_t balls_capacity;
-
-	SDL_FPoint *balls_points;
 };
 
 void world_init(struct World *world, struct Game *game, uint32_t balls_capacity);

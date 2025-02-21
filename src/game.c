@@ -1,7 +1,7 @@
 #include "game.h"
+#include "colors.h"
 #include "debug.h"
 
-#include <math.h>
 #include <stdlib.h>
 
 #include <SDL3/SDL_render.h>
@@ -19,6 +19,8 @@ void game_init(struct Game *game) {
 	game->renderer = SDL_CreateRenderer(game->window, nullptr);
 	SDL_SetRenderLogicalPresentation(game->renderer, 500, 500, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 	SDL_assert_always(game->renderer != nullptr);
+
+	color_palette_init();
 }
 
 void game_destroy(struct Game *game) {
@@ -32,12 +34,8 @@ void game_destroy(struct Game *game) {
 void game_start(struct Game *game) {
 	world_init(&game->world, game, INIT_BALL_COUNT * 2);
 	for(uint32_t i = 0; i < INIT_BALL_COUNT; ++i) {
-		struct Ball ball = {
-			.x = rand() % game->logical_width,
-			.y = rand() % game->logical_height,
-			.angle_radians = 2.0f * M_PI * (float)rand() / (float)RAND_MAX,
-		};
-
+		struct Ball ball;
+		ball_init(&ball, rand() % game->logical_width, rand() % game->logical_height);
 		world_add_ball(&game->world, &ball);
 	}
 
@@ -94,12 +92,8 @@ void game_handle_event(struct Game *game, const SDL_Event *event) {
 	case SDL_EVENT_MOUSE_BUTTON_DOWN:
 		switch(event->button.button) {
 		case SDL_BUTTON_LEFT:
-			struct Ball ball = (struct Ball) {
-				.x = game->mouse_x,
-				.y = game->mouse_y,
-				.angle_radians = rand() / (float)RAND_MAX * M_PI * 2.0f
-			};
-			
+			struct Ball ball;
+			ball_init(&ball, game->mouse_x, game->mouse_y);
 			world_add_ball(&game->world, &ball);
 			break;
 		}
