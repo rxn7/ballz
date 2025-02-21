@@ -1,8 +1,11 @@
 #pragma once
 
 #include "world.h"
+#include "debug.h"
 
 #include <SDL3/SDL.h>
+
+#define INIT_BALL_COUNT 100
 
 struct Game {
 	SDL_Window *window;
@@ -15,6 +18,7 @@ struct Game {
 	bool is_window_open;
 
 	struct World world;
+	struct Debug debug;
 };
 
 void game_init(struct Game *game);

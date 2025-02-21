@@ -1,4 +1,5 @@
 #include "game.h"
+#include "debug.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -18,17 +19,6 @@ void game_init(struct Game *game) {
 	game->renderer = SDL_CreateRenderer(game->window, nullptr);
 	SDL_SetRenderLogicalPresentation(game->renderer, 500, 500, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 	SDL_assert_always(game->renderer != nullptr);
-
-	world_init(&game->world, game, 10000);
-	for(uint32_t i = 0; i < game->world.balls_capacity; ++i) {
-		struct Ball ball = {
-			.x = rand() % game->logical_width,
-			.y = rand() % game->logical_height,
-			.angle_radians = 2.0f * M_PI * (float)rand() / (float)RAND_MAX,
-		};
-
-		world_add_ball(&game->world, &ball);
-	}
 }
 
 void game_destroy(struct Game *game) {
@@ -40,17 +30,30 @@ void game_destroy(struct Game *game) {
 }
 
 void game_start(struct Game *game) {
+	world_init(&game->world, game, INIT_BALL_COUNT * 2);
+	for(uint32_t i = 0; i < INIT_BALL_COUNT; ++i) {
+		struct Ball ball = {
+			.x = rand() % game->logical_width,
+			.y = rand() % game->logical_height,
+			.angle_radians = 2.0f * M_PI * (float)rand() / (float)RAND_MAX,
+		};
+
+		world_add_ball(&game->world, &ball);
+	}
+
 	uint64_t now = SDL_GetPerformanceCounter();
 	uint64_t last_frame_tick = now;
 	while(game->is_window_open) {
-		now = SDL_GetPerformanceCounter();
-		const float dt = (now - last_frame_tick) / (float)SDL_GetPerformanceFrequency();
-		last_frame_tick = now;
-
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
 			game_handle_event(game, &event);
 		}
+
+		now = SDL_GetPerformanceCounter();
+		const float dt = (now - last_frame_tick) / (float)SDL_GetPerformanceFrequency();
+		last_frame_tick = now;
+
+		debug_update(&game->debug);
 
 		world_simulate(&game->world, dt);
 		game_render(game);
@@ -62,6 +65,7 @@ void game_render(struct Game *game) {
 	SDL_RenderClear(game->renderer);
 
 	world_render(&game->world, game->renderer);
+	debug_render(&game->debug, game->renderer);
 
 	SDL_RenderPresent(game->renderer);
 }
@@ -73,6 +77,8 @@ void game_handle_event(struct Game *game, const SDL_Event *event) {
 		game->is_window_open = false;
 		break;
 
+	case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+	case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
 	case SDL_EVENT_WINDOW_RESIZED:
 		game_handle_window_resize(game, event);
 		break;

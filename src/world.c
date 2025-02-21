@@ -1,4 +1,5 @@
 #include "world.h"
+#include "debug.h"
 #include "game.h"
 #include "ball.h"
 #include "timer.h"
@@ -124,8 +125,15 @@ void world_simulate(struct World *world, float dt) {
 		ball->y += dy * BALL_SPEED * dt;
 	}
 
-
-	timer_print_elapsed(&simulate_timer, "world::simulate");
+	{
+		struct DebugData *debug_data = debug_get_current_data(&world->game->debug);
+		debug_data->balls_count = world->balls_count;
+		debug_data->balls_capacity = world->balls_capacity;
+	}
+	{
+		struct DebugData *debug_data = debug_get_next_data(&world->game->debug);
+		debug_data->simulate_time = timer_elapsed(&simulate_timer);
+	}
 }
 
 void world_render(struct World *world, SDL_Renderer *renderer) {
@@ -146,14 +154,11 @@ void world_render(struct World *world, SDL_Renderer *renderer) {
 		}
 	}
 
-
-	timer_print_elapsed(&render_timer, "world::render::create_rects");
-	timer_restart(&render_timer);
-
 	SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
 	SDL_RenderPoints(renderer, world->balls_points, world->balls_count * BALL_RENDER_SEGMENTS + 1);
 
-	timer_print_elapsed(&render_timer, "world::render::fill_rects");
+	struct DebugData *debug_data = debug_get_next_data(&world->game->debug);
+	debug_data->render_time = timer_elapsed(&render_timer);
 }
 
 void world_print_memory_usage(struct World *world) {

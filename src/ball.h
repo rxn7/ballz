@@ -1,8 +1,8 @@
 #pragma once
 
-#define BALL_RADIUS 1.0f
-#define BALL_SPEED 10
-#define BALL_RENDER_SEGMENTS 32
+#define BALL_RADIUS 2.5f
+#define BALL_SPEED 40
+#define BALL_RENDER_SEGMENTS 64
 
 struct Ball {
 	float x, y;
