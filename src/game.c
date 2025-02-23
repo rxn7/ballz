@@ -2,8 +2,6 @@
 #include "colors.h"
 #include "debug.h"
 
-#include <stdlib.h>
-
 #include <SDL3/SDL_render.h>
 
 void game_init(struct Game *game) {
@@ -17,14 +15,17 @@ void game_init(struct Game *game) {
 	game->logical_height = 500;
 
 	game->renderer = SDL_CreateRenderer(game->window, nullptr);
-	SDL_SetRenderLogicalPresentation(game->renderer, 500, 500, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 	SDL_assert_always(game->renderer != nullptr);
 
+	SDL_SetRenderLogicalPresentation(game->renderer, 500, 500, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+
 	color_palette_init();
+
+	render_context_init(&game->render_ctx, game->renderer);
 }
 
-void game_destroy(struct Game *game) {
-	world_destroy(&game->world);
+void game_free(struct Game *game) {
+	world_free(&game->world);
 
 	SDL_DestroyRenderer(game->renderer);
 	SDL_DestroyWindow(game->window);
@@ -32,12 +33,7 @@ void game_destroy(struct Game *game) {
 }
 
 void game_start(struct Game *game) {
-	world_init(&game->world, game, INIT_BALL_COUNT * 2);
-	for(uint32_t i = 0; i < INIT_BALL_COUNT; ++i) {
-		struct Ball ball;
-		ball_init(&ball, rand() % game->logical_width, rand() % game->logical_height);
-		world_add_ball(&game->world, &ball);
-	}
+	world_init(&game->world, game, 100);
 
 	uint64_t now = SDL_GetPerformanceCounter();
 	uint64_t last_frame_tick = now;
@@ -62,7 +58,7 @@ void game_render(struct Game *game) {
 	SDL_SetRenderDrawColor(game->renderer, 40, 40, 40, 255);
 	SDL_RenderClear(game->renderer);
 
-	world_render(&game->world, game->renderer);
+	world_render(&game->world);
 	debug_render(&game->debug, game->renderer);
 
 	SDL_RenderPresent(game->renderer);

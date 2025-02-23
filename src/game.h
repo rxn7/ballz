@@ -2,10 +2,9 @@
 
 #include "world.h"
 #include "debug.h"
+#include "render.h"
 
 #include <SDL3/SDL.h>
-
-#define INIT_BALL_COUNT 100
 
 struct Game {
 	SDL_Window *window;
@@ -19,11 +18,12 @@ struct Game {
 
 	struct World world;
 	struct Debug debug;
+	struct RenderContext render_ctx;
 };
 
 void game_init(struct Game *game);
 void game_start(struct Game *game);
-void game_destroy(struct Game *game);
+void game_free(struct Game *game);
 void game_handle_event(struct Game *ctx, const SDL_Event *event);
 void game_render(struct Game *game);
 void game_handle_window_resize(struct Game *game, const SDL_Event *event);

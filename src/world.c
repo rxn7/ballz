@@ -1,5 +1,4 @@
 #include "world.h"
-#include "colors.h"
 #include "debug.h"
 #include "game.h"
 #include "ball.h"
@@ -9,17 +8,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void world_init(struct World *world, struct Game *game, uint32_t balls_capacity) {
+void world_init(struct World *world, struct Game *game, uint32_t balls_count) {
 	world->game = game;
-	world->balls = calloc(balls_capacity, sizeof(struct Ball));
+
+	world->balls_capacity = balls_count * 2;
+	world->balls = calloc(world->balls_capacity, sizeof(struct Ball));
 	world->balls_count = 0;
 
-	world->balls_capacity = balls_capacity;
+	for(uint32_t i = 0; i < balls_count; ++i) {
+		struct Ball ball;
+		ball_init(&ball, rand() % game->logical_width, rand() % game->logical_height);
+		world_add_ball(&game->world, &ball);
+	}
 
 	world_print_memory_usage(world);
 }
 
-void world_destroy(struct World *world) {
+void world_free(struct World *world) {
 	free(world->balls);
 }
 
@@ -134,51 +139,13 @@ void world_simulate(struct World *world, float dt) {
 	}
 }
 
-void world_render(struct World *world, SDL_Renderer *renderer) {
+void world_render(struct World *world) {
 	struct Timer render_timer;
 	timer_start(&render_timer);
 
 	for(uint32_t i = 0; i < world->balls_count; ++i) {
 		const struct Ball *ball = &world->balls[i];
-		const int32_t radius = ceilf(BALL_RADIUS);
-		const int32_t diameter = ceilf(BALL_DIAMETER);
-
-		int32_t x = radius - 1;
-		int32_t y = 0;
-		int32_t tx = 1;
-		int32_t ty = 1;
-		int32_t error = tx - diameter;
-		uint32_t draw_count = 0;
-
-		const uint32_t point_count = diameter * 8 * 35 / 49;
-		SDL_FPoint points[point_count];
-		
-		while(x >= y) {
-			points[draw_count+0] = (SDL_FPoint) { ball->x + x, ball->y + y };
-			points[draw_count+1] = (SDL_FPoint) { ball->x + x, ball->y - y };
-			points[draw_count+2] = (SDL_FPoint) { ball->x - x, ball->y - y };
-			points[draw_count+3] = (SDL_FPoint) { ball->x - x, ball->y + y };
-			points[draw_count+4] = (SDL_FPoint) { ball->x + y, ball->y + x };
-			points[draw_count+5] = (SDL_FPoint) { ball->x + y, ball->y - x };
-			points[draw_count+6] = (SDL_FPoint) { ball->x - y, ball->y - x };
-			points[draw_count+7] = (SDL_FPoint) { ball->x - y, ball->y + x };
-			draw_count += 8;
-
-			if(error <= 0) {
-				++y;
-				error += ty;
-				ty += 2;
-			}
-			if(error > 0) {
-				--x;
-				tx += 2;
-				error += tx - ceilf(BALL_DIAMETER);
-			}
-		}
-
-		SDL_Color *color = &color_palette[ball->color];
-		SDL_SetRenderDrawColor(renderer, color->r, color->g, color->b, color->a);
-		SDL_RenderPoints(renderer, points, draw_count);
+		render_ball(&world->game->render_ctx, ball);
 	}
 
 	struct DebugData *debug_data = debug_get_next_data(&world->game->debug);

@@ -11,7 +11,7 @@ int main() {
 
 	game_init(&game);
 	game_start(&game);
-	game_destroy(&game);
+	game_free(&game);
 
 	return 0;
 }

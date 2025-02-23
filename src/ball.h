@@ -9,7 +9,7 @@
 struct Ball {
 	float x, y;
 	float angle_radians;
-	uint8_t color;
+	uint8_t color_idx;
 };
 
 void ball_init(struct Ball *ball, float x, float y);
