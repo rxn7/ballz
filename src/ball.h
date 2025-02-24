@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define BALL_RADIUS 10.0f
+#define BALL_RADIUS 2.0f
 #define BALL_DIAMETER (BALL_RADIUS * 2.0f)
 #define BALL_SPEED 40
 

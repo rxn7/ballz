@@ -8,19 +8,18 @@ void game_init(struct Game *game) {
 	SDL_assert_always(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS));
 
 	game->window = SDL_CreateWindow("Ballz", 640, 480, SDL_WINDOW_RESIZABLE);
-	SDL_assert_always(game->window != nullptr);
+	SDL_assert_always(game->window != NULL);
 	game->is_window_open = true;
 
-	game->logical_width = 500;
-	game->logical_height = 500;
+	game->logical_width = 512;
+	game->logical_height = 512;
 
-	game->renderer = SDL_CreateRenderer(game->window, nullptr);
-	SDL_assert_always(game->renderer != nullptr);
+	game->renderer = SDL_CreateRenderer(game->window, NULL);
+	SDL_assert_always(game->renderer != NULL);
 
-	SDL_SetRenderLogicalPresentation(game->renderer, 500, 500, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+	SDL_SetRenderLogicalPresentation(game->renderer, game->logical_width, game->logical_height, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
 	color_palette_init();
-
 	render_context_init(&game->render_ctx, game->renderer);
 }
 
@@ -33,7 +32,7 @@ void game_free(struct Game *game) {
 }
 
 void game_start(struct Game *game) {
-	world_init(&game->world, game, 100);
+	world_init(&game->world, game, 5000);
 
 	uint64_t now = SDL_GetPerformanceCounter();
 	uint64_t last_frame_tick = now;

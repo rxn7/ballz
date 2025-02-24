@@ -1,5 +1,6 @@
 #include "debug.h"	
 #include "ball.h"
+#include "cell.h"
 
 #include <stdio.h>
 
@@ -34,12 +35,15 @@ void debug_render(struct Debug *debug, SDL_Renderer *renderer) {
 	snprintf(buffer, sizeof(buffer), "FPS:    %d", data->fps);
 	SDL_RenderDebugText(renderer, 0, 0, buffer);
 
-	snprintf(buffer, sizeof(buffer), "Render: %gms", data->render_time);
+	snprintf(buffer, sizeof(buffer), "Render: %fms", data->render_time);
 	SDL_RenderDebugText(renderer, 0, 10, buffer);
 
-	snprintf(buffer, sizeof(buffer), "Sim:    %gms", data->simulate_time);
+	snprintf(buffer, sizeof(buffer), "Sim:    %fms", data->simulate_time);
 	SDL_RenderDebugText(renderer, 0, 20, buffer);
 
 	snprintf(buffer, sizeof(buffer), "Balls:  %d (%lu bytes)", data->balls_count, sizeof(struct Ball) * data->balls_capacity);
 	SDL_RenderDebugText(renderer, 0, 30, buffer);
+
+	snprintf(buffer, sizeof(buffer), "Cells:  %d (%d x %d)", CELL_COUNT * CELL_COUNT, CELL_COUNT, CELL_COUNT);
+	SDL_RenderDebugText(renderer, 0, 40, buffer);
 }
