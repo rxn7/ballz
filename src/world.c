@@ -1,6 +1,6 @@
 #include "world.h"
-#include "SDL3/SDL_assert.h"
 #include "cell.h"
+#include "colors.h"
 #include "debug.h"
 #include "game.h"
 #include "ball.h"
@@ -20,7 +20,7 @@ void world_init(struct World *world, struct Game *game, uint32_t balls_count) {
 	world->balls = (struct Ball *)malloc(sizeof(struct Ball) * world->balls_capacity);
 
 	for(uint32_t i = 0; i < CELL_COUNT * CELL_COUNT; ++i) {
-			cell_init(&world->cells[i]);
+		cell_init(&world->cells[i]);
 	}
 
 	for(uint32_t i = 0; i < balls_count; ++i) {
@@ -46,9 +46,42 @@ void world_add_ball(struct World *world, const struct Ball *ball) {
 	world->balls[world->balls_count++] = *ball;
 }
 
+void world_remove_ball(struct World *world, float x, float y) {
+	const struct CellCoords coords = cell_coords_from_position(x, y);
+	struct Cell *cell = world_get_cell(world, coords);
+
+	for(uint32_t i = 0; i < cell->balls.count; ++i) {
+		struct Ball *ball = (struct Ball *)&cell->balls.data[i];
+		const float dx = ball->x - x;
+		const float dy = ball->y - y;
+		const float distance_sqr = dx * dx + dy * dy;
+
+		if(distance_sqr <= BALL_DIAMETER * BALL_DIAMETER) {
+			list_remove(&cell->balls, ball);
+			break;
+		}
+	}
+}
+
 void world_simulate(struct World *world, float dt) {
 	struct Timer simulate_timer;
 	timer_start(&simulate_timer);
+
+	for(uint32_t i = 0; i < CELL_COUNT * CELL_COUNT; ++i) {
+		list_clear(&world->cells[i].balls);
+	}
+
+	for(uint32_t i = 0; i < world->balls_count; ++i) {
+		struct Ball *ball = &world->balls[i];
+		struct CellList cells_list = world_get_ball_cells(world, ball);
+
+		for(uint32_t j = 0; j < cells_list.size; ++j) {
+			struct Cell *cell = cells_list.cells[j];
+			cell_insert(cell, ball);
+		}
+
+		free(cells_list.cells);
+	}
 
 	for(uint32_t i = 0; i < world->balls_count; ++i) {
 		struct Ball *a = (struct Ball *)&world->balls[i];
@@ -111,6 +144,10 @@ void world_simulate(struct World *world, float dt) {
 		world_update_ball(world, ball, dt);
 	}
 
+	if(!world->game->debug.enabled) {
+		return;
+	}
+
 	{
 		struct DebugData *debug_data = debug_get_current_data(&world->game->debug);
 		debug_data->balls_count = world->balls_count;
@@ -123,8 +160,6 @@ void world_simulate(struct World *world, float dt) {
 }
 
 void world_update_ball(struct World *world, struct Ball *ball, float dt) {
-	struct CellCoords old_coords = cell_coords_from_position(ball->x, ball->y);
-
 	if(ball->x - BALL_RADIUS <= 0.0f) {
 		ball_flip_angle_horizontally(ball);
 		ball->x = BALL_RADIUS + COLLISION_MARGIN; 
@@ -146,51 +181,6 @@ void world_update_ball(struct World *world, struct Ball *ball, float dt) {
 
 	ball->x += dx * BALL_SPEED * dt;
 	ball->y += dy * BALL_SPEED * dt;
-
-	struct CellCoords new_coords = cell_coords_from_position(ball->x, ball->y);
-	if(cell_coords_are_equal(&old_coords, &new_coords)) {
-		return;
-	}
-
-	struct CellCoords old_cell_coords[9], new_cell_coords[9];
-	uint8_t old_cells_count = cell_coords_get_neighbours(old_coords, old_cell_coords);
-	uint8_t new_cells_count = cell_coords_get_neighbours(new_coords, new_cell_coords);
-
-	SDL_assert_always(old_cells_count < 9);
-	SDL_assert_always(new_cells_count < 9);
-
-	old_cell_coords[old_cells_count++] = old_coords;
-	new_cell_coords[new_cells_count++] = new_coords;
-
-	for(uint8_t i = 0; i < old_cells_count; ++i) {
-		bool found = false;
-		for(uint8_t j = 0; j < new_cells_count; ++j) {
-			if(cell_coords_are_equal(&old_cell_coords[i], &new_cell_coords[j])) {
-				found = true;
-				break;
-			}
-		}
-		// If the old cell was not found in the new cells, remove the ball from the old cell
-		if(!found) {
-			struct CellCoords c = old_cell_coords[i];
-			cell_remove(world_get_cell(world, c), ball);
-		}
-	}
-
-	for(uint8_t i = 0; i < new_cells_count; ++i) {
-		bool found = false;
-		for(uint8_t j = 0; j < old_cells_count; ++j) {
-			if(cell_coords_are_equal(&new_cell_coords[i], &old_cell_coords[j])) {
-				found = true;
-				break;
-			}
-		}
-		// If the new cell was not found in the old cells, insert the ball into the new cell
-		if(!found) {
-			struct CellCoords c = new_cell_coords[i];
-			cell_insert(world_get_cell(world, c), ball);
-		}
-	}
 }
 
 void world_render(struct World *world) {
@@ -202,7 +192,10 @@ void world_render(struct World *world) {
 		render_ball(&world->game->render_ctx, ball);
 	}
 
-#ifdef RENDER_CELLS
+	if(!world->game->debug.enabled) {
+		return;
+	}
+
 	for(uint8_t x = 0; x < CELL_COUNT; ++x) {
 		for(uint8_t y = 0; y < CELL_COUNT; ++y) {
 			const struct Cell *cell = world_get_cell(world, (struct CellCoords) { x, y });
@@ -222,14 +215,21 @@ void world_render(struct World *world) {
 
 			if(cell->balls.count > 0) {
 				char text[6];
-				sprintf(text, "%u", cell->balls.count);
+				snprintf(text, sizeof(text), "%u", cell->balls.count);
 
 				SDL_SetRenderDrawColor(world->game->renderer, 255, 0, 255, 255);
 				SDL_RenderDebugText(world->game->renderer, rect.x, rect.y, text);
+
+				for(uint32_t i = 0; i < cell->balls.count; ++i) {
+					const struct Ball *ball = (struct Ball *)cell->balls.data[i];
+					const SDL_Color color = color_palette[ball->color_idx];
+
+					SDL_SetRenderDrawColor(world->game->renderer, color.r, color.g, color.b, 255);
+					SDL_RenderLine(world->game->renderer, x * CELL_SIZE, y * CELL_SIZE, ball->x, ball->y);
+				}
 			}
 		}
 	}
-#endif
 
 	struct DebugData *debug_data = debug_get_next_data(&world->game->debug);
 	debug_data->render_time = timer_elapsed(&render_timer);
@@ -238,7 +238,7 @@ void world_render(struct World *world) {
 struct CellList world_get_ball_cells(struct World *world, const struct Ball *ball) {
 	struct CellCoords center = cell_coords_from_position(ball->x, ball->y);
 
-	struct CellCoords neighbours[4];
+	struct CellCoords neighbours[8];
 	uint8_t neighbour_count = cell_coords_get_neighbours(center, neighbours);
 
 	struct Cell **cells = malloc(sizeof(struct Cell *) * (neighbour_count + 1));

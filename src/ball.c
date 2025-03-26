@@ -1,7 +1,7 @@
 #include "ball.h"
 
-#include <stdlib.h>
 #include <math.h>
+#include <stdlib.h>
 
 void ball_init(struct Ball *ball, float x, float y) {
 	ball->x = x;

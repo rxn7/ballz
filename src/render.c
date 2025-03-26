@@ -40,7 +40,9 @@ static void create_ball_texture(struct RenderContext *ctx) {
 			const size_t idx = y * surface->w + x;
 			uint8_t *pixels = (uint8_t *)surface->pixels;
 
-			const float distance_sqr = (x - BALL_RADIUS) * (x - BALL_RADIUS) + (y - BALL_RADIUS) * (y - BALL_RADIUS);
+			const float dx = x - BALL_RADIUS;
+			const float dy = y - BALL_RADIUS;
+			const float distance_sqr = dx * dx + dy * dy;
 			pixels[idx] = distance_sqr < BALL_RADIUS * BALL_RADIUS;
 		}
 	}

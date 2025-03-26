@@ -13,6 +13,8 @@ struct DebugData {
 };
 
 struct Debug {
+	bool enabled;
+
 	struct Timer timer;
 	uint64_t frame_count;
 

@@ -6,7 +6,7 @@
 #include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_render.h>
 
-// #define RENDER_CELLS
+#define RENDER_CELLS
 
 struct CellList {
 	struct Cell **cells;
@@ -25,6 +25,7 @@ struct World {
 void world_init(struct World *world, struct Game *game, uint32_t balls_count);
 void world_free(struct World *world);
 void world_add_ball(struct World *world, const struct Ball *ball);
+void world_remove_ball(struct World *world, float x, float y);
 void world_simulate(struct World *world, float dt);
 void world_update_ball(struct World *world, struct Ball *ball, float dt);
 void world_render(struct World *world);

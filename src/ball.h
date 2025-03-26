@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-#define BALL_RADIUS 2.0f
-#define BALL_DIAMETER (BALL_RADIUS * 2.0f)
+#define BALL_RADIUS 16
+#define BALL_DIAMETER (BALL_RADIUS * 2)
 #define BALL_SPEED 40
 
 struct Ball {

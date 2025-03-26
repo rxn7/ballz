@@ -6,8 +6,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define CELL_SIZE 8
-#define CELL_COUNT (512 / CELL_SIZE)
+#define CELL_SIZE (BALL_DIAMETER)
+#define CELL_COUNT (1024 / CELL_SIZE)
 
 _Static_assert(UINT8_MAX >= CELL_COUNT);
 
@@ -29,4 +29,4 @@ struct CellCoords cell_coords_from_position(float x, float y);
 uint16_t cell_idx(struct CellCoords coords);
 
 bool cell_coords_are_equal(const struct CellCoords *a, const struct CellCoords *b);
-uint8_t cell_coords_get_neighbours(const struct CellCoords center, struct CellCoords coords[4]);
+uint8_t cell_coords_get_neighbours(const struct CellCoords center, struct CellCoords coords[8]);

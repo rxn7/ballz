@@ -11,8 +11,8 @@ void game_init(struct Game *game) {
 	SDL_assert_always(game->window != NULL);
 	game->is_window_open = true;
 
-	game->logical_width = 512;
-	game->logical_height = 512;
+	game->logical_width = 1024;
+	game->logical_height = 1024;
 
 	game->renderer = SDL_CreateRenderer(game->window, NULL);
 	SDL_assert_always(game->renderer != NULL);
@@ -21,6 +21,8 @@ void game_init(struct Game *game) {
 
 	color_palette_init();
 	render_context_init(&game->render_ctx, game->renderer);
+
+	game->debug.enabled = false;
 }
 
 void game_free(struct Game *game) {
@@ -32,7 +34,7 @@ void game_free(struct Game *game) {
 }
 
 void game_start(struct Game *game) {
-	world_init(&game->world, game, 5000);
+	world_init(&game->world, game, INITIAL_BALL_COUNT);
 
 	uint64_t now = SDL_GetPerformanceCounter();
 	uint64_t last_frame_tick = now;
@@ -58,7 +60,10 @@ void game_render(struct Game *game) {
 	SDL_RenderClear(game->renderer);
 
 	world_render(&game->world);
-	debug_render(&game->debug, game->renderer);
+
+	if(game->debug.enabled) {
+		debug_render(&game->debug, game->renderer);
+	}
 
 	SDL_RenderPresent(game->renderer);
 }
@@ -81,16 +86,26 @@ void game_handle_event(struct Game *game, const SDL_Event *event) {
 		case SDLK_ESCAPE:
 			game->is_window_open = false;
 			break;
+
+		case SDLK_F1:
+			game->debug.enabled = !game->debug.enabled;
+			break;
 		}
 		break;
 
 	case SDL_EVENT_MOUSE_BUTTON_DOWN:
 		switch(event->button.button) {
-		case SDL_BUTTON_LEFT:
-			struct Ball ball;
-			ball_init(&ball, game->mouse_x, game->mouse_y);
-			world_add_ball(&game->world, &ball);
-			break;
+			case SDL_BUTTON_LEFT: {
+				struct Ball ball;
+				ball_init(&ball, game->mouse_x, game->mouse_y);
+				world_add_ball(&game->world, &ball);
+				break;
+			}
+
+			case SDL_BUTTON_RIGHT: {
+				world_remove_ball(&game->world, game->mouse_x, game->mouse_y);
+				break;
+			}
 		}
 
 	case SDL_EVENT_MOUSE_MOTION:

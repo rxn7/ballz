@@ -6,6 +6,8 @@
 
 #include <SDL3/SDL.h>
 
+#define INITIAL_BALL_COUNT (150)
+
 struct Game {
 	SDL_Window *window;
 	SDL_Renderer *renderer;

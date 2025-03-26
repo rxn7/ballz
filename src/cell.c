@@ -39,7 +39,7 @@ bool cell_coords_are_equal(const struct CellCoords *a, const struct CellCoords *
 }
 
 // Returns the number of neighbouring cells
-uint8_t cell_coords_get_neighbours(const struct CellCoords center, struct CellCoords coords[4]) {
+uint8_t cell_coords_get_neighbours(const struct CellCoords center, struct CellCoords coords[8]) {
 	uint8_t count = 0;
 
 	if(center.x != 0) {
@@ -52,10 +52,26 @@ uint8_t cell_coords_get_neighbours(const struct CellCoords center, struct CellCo
 
 	if(center.y != 0) {
 		coords[count++] = (struct CellCoords) { center.x, center.y - 1 };
+
+		if(center.x < CELL_COUNT - 1) {
+			coords[count++] = (struct CellCoords) { center.x + 1, center.y - 1 };
+		}
+
+		if(center.x != 0) {
+			coords[count++] = (struct CellCoords) { center.x - 1, center.y - 1 };
+		}
 	}
 
 	if(center.y < CELL_COUNT - 1) {
 		coords[count++] = (struct CellCoords) { center.x, center.y + 1 };
+
+		if(center.x < CELL_COUNT - 1) {
+			coords[count++] = (struct CellCoords) { center.x + 1, center.y + 1 };
+		}
+
+		if(center.x != 0) {
+			coords[count++] = (struct CellCoords) { center.x - 1, center.y + 1 };
+		}
 	}
 
 	return count;
