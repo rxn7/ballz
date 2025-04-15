@@ -17,7 +17,15 @@ void render_context_free(struct RenderContext *ctx) {
 	SDL_DestroyTexture(ctx->ball_texture);
 }
 
-void render_ball(struct RenderContext *ctx, const struct Ball *ball) {
+void render_ball(struct RenderContext *ctx, const struct Ball *ball, bool is_hovered) {
+    if(is_hovered) {
+        float radius = BALL_RADIUS * 1.2f;
+        const SDL_FRect dest = { ball->x - radius, ball->y - radius, radius * 2, radius * 2 };
+
+        SDL_SetTextureColorMod(ctx->ball_texture, 255, 255, 255);
+        SDL_RenderTexture(ctx->renderer, ctx->ball_texture, NULL, &dest);
+    }
+
 	const SDL_FRect dest = { ball->x - BALL_RADIUS, ball->y - BALL_RADIUS, BALL_DIAMETER, BALL_DIAMETER };
 	const SDL_Color color = color_palette[ball->color_idx];
 

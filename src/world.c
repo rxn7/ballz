@@ -43,22 +43,13 @@ void world_add_ball(struct World *world, float x, float y) {
     list_insert(&world->balls, ball);
 }
 
-void world_remove_ball(struct World *world, float x, float y) {
-	const struct CellCoords coords = cell_coords_from_position(x, y);
-	struct Cell *cell = world_get_cell(world, coords);
+void world_remove_hovered_ball(struct World *world) {
+    if(world->hovered_ball == NULL) {
+        return;
+    }
 
-	for(uint32_t i = 0; i < cell->balls.count; ++i) {
-		struct Ball *ball = (struct Ball *)cell->balls.data[i];
-		const float dx = ball->x - x;
-		const float dy = ball->y - y;
-		const float distance_sqr = dx * dx + dy * dy;
-
-		if(distance_sqr <= BALL_RADIUS * BALL_RADIUS) {
-            list_remove(&world->balls, ball);
-			list_remove(&cell->balls, ball);
-			break;
-		}
-	}
+    list_remove(&world->balls, world->hovered_ball);
+    list_remove(&world->hovered_cell->balls, world->hovered_ball);
 }
 
 void world_simulate(struct World *world, float dt) {
@@ -187,7 +178,8 @@ void world_render(struct World *world) {
 
 	for(uint32_t i = 0; i < world->balls.count; ++i) {
 		const struct Ball *ball = (const struct Ball *)world->balls.data[i];
-		render_ball(&world->game->render_ctx, ball);
+        const bool is_hovered = ball == world->hovered_ball;
+		render_ball(&world->game->render_ctx, ball, is_hovered);
 	}
 
 	if(!world->game->debug.enabled) {
@@ -252,6 +244,28 @@ struct CellList world_get_ball_cells(struct World *world, const struct Ball *bal
 		.cells = cells,
 		.size = neighbour_count + 1
 	};
+}
+
+void world_update_hovered_ball(struct World *world) {
+    const float x = world->game->mouse_x;
+    const float y = world->game->mouse_y;
+
+	const struct CellCoords coords = cell_coords_from_position(x, y);
+	world->hovered_cell = world_get_cell(world, coords);
+
+	for(uint32_t i = 0; i < world->hovered_cell->balls.count; ++i) {
+		struct Ball *ball = (struct Ball *)world->hovered_cell->balls.data[i];
+		const float dx = ball->x - x;
+		const float dy = ball->y - y;
+		const float distance_sqr = dx * dx + dy * dy;
+
+		if(distance_sqr <= BALL_RADIUS * BALL_RADIUS) {
+            world->hovered_ball = ball;
+            return;
+		}
+	}
+
+    world->hovered_ball = NULL;
 }
 
 struct Cell *world_get_cell(struct World *world, struct CellCoords coords) {

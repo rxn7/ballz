@@ -10,4 +10,5 @@ struct RenderContext {
 
 void render_context_init(struct RenderContext *ctx, SDL_Renderer *renderer);
 void render_context_free(struct RenderContext *ctx);
-void render_ball(struct RenderContext *ctx, const struct Ball *ball);
+void render_ball(struct RenderContext *ctx, const struct Ball *ball, bool is_hovered);
+void render_hovered_ball(struct RenderContext *ctx, const struct Ball *ball);

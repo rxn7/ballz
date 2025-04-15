@@ -23,6 +23,9 @@ void game_init(struct Game *game) {
 	render_context_init(&game->render_ctx, game->renderer);
 
 	game->debug.enabled = false;
+
+	game->normal_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+	game->hovered_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
 }
 
 void game_free(struct Game *game) {
@@ -51,6 +54,9 @@ void game_start(struct Game *game) {
 		debug_update(&game->debug);
 
 		world_simulate(&game->world, dt);
+		world_update_hovered_ball(&game->world);
+		game_update_cursor(game);
+
 		game_render(game);
 	}
 }
@@ -101,7 +107,7 @@ void game_handle_event(struct Game *game, const SDL_Event *event) {
 			}
 
 			case SDL_BUTTON_RIGHT: {
-				world_remove_ball(&game->world, game->mouse_x, game->mouse_y);
+				world_remove_hovered_ball(&game->world);
 				break;
 			}
 		}
@@ -115,4 +121,12 @@ void game_handle_event(struct Game *game, const SDL_Event *event) {
 void game_handle_window_resize(struct Game *game, const SDL_Event *event) {
 	game->window_w = event->window.data1;
 	game->window_h = event->window.data2;
+}
+
+void game_update_cursor(struct Game *game) {
+	if(game->world.hovered_ball != NULL) {
+		SDL_SetCursor(game->hovered_cursor);
+	} else {
+		SDL_SetCursor(game->normal_cursor);
+	}
 }
