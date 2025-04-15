@@ -96,9 +96,7 @@ void game_handle_event(struct Game *game, const SDL_Event *event) {
 	case SDL_EVENT_MOUSE_BUTTON_DOWN:
 		switch(event->button.button) {
 			case SDL_BUTTON_LEFT: {
-				struct Ball ball;
-				ball_init(&ball, game->mouse_x, game->mouse_y);
-				world_add_ball(&game->world, &ball);
+				world_add_ball(&game->world, game->mouse_x, game->mouse_y);
 				break;
 			}
 

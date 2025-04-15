@@ -15,35 +15,32 @@ const float COLLISION_MARGIN = 0.01f;
 void world_init(struct World *world, struct Game *game, uint32_t balls_count) {
 	world->game = game;
 
-	world->balls_capacity = balls_count * 2;
-	world->balls_count = 0;
-	world->balls = (struct Ball *)malloc(sizeof(struct Ball) * world->balls_capacity);
+    list_init(&world->balls, balls_count * 2);
 
 	for(uint32_t i = 0; i < CELL_COUNT * CELL_COUNT; ++i) {
 		cell_init(&world->cells[i]);
 	}
 
 	for(uint32_t i = 0; i < balls_count; ++i) {
-		struct Ball ball;
-		ball_init(&ball, rand() % game->logical_width, rand() % game->logical_height);
-
-		world_add_ball(&game->world, &ball);
+		world_add_ball(world, rand() % (game->logical_width - BALL_RADIUS) + BALL_RADIUS, rand() % (game->logical_height - BALL_RADIUS) + BALL_RADIUS);
 	}
 
 	world_print_memory_usage(world);
 }
 
 void world_free(struct World *world) {
-	free(world->balls);
+	for(uint32_t i = 0; i < world->balls.count; ++i) {
+        void *data = world->balls.data[i];
+        free(data);
+    }
+
+    list_free(&world->balls);
 }
 
-void world_add_ball(struct World *world, const struct Ball *ball) {
-	if(world->balls_count >= world->balls_capacity) {
-		world->balls_capacity *= 2;
-		world->balls = realloc(world->balls, sizeof(struct Ball) * world->balls_capacity);
-	}
-
-	world->balls[world->balls_count++] = *ball;
+void world_add_ball(struct World *world, float x, float y) {
+    struct Ball *ball = (struct Ball *)malloc(sizeof(struct Ball));
+    ball_init(ball, x, y);
+    list_insert(&world->balls, ball);
 }
 
 void world_remove_ball(struct World *world, float x, float y) {
@@ -51,12 +48,13 @@ void world_remove_ball(struct World *world, float x, float y) {
 	struct Cell *cell = world_get_cell(world, coords);
 
 	for(uint32_t i = 0; i < cell->balls.count; ++i) {
-		struct Ball *ball = (struct Ball *)&cell->balls.data[i];
+		struct Ball *ball = (struct Ball *)cell->balls.data[i];
 		const float dx = ball->x - x;
 		const float dy = ball->y - y;
 		const float distance_sqr = dx * dx + dy * dy;
 
-		if(distance_sqr <= BALL_DIAMETER * BALL_DIAMETER) {
+		if(distance_sqr <= BALL_RADIUS * BALL_RADIUS) {
+            list_remove(&world->balls, ball);
 			list_remove(&cell->balls, ball);
 			break;
 		}
@@ -71,8 +69,8 @@ void world_simulate(struct World *world, float dt) {
 		list_clear(&world->cells[i].balls);
 	}
 
-	for(uint32_t i = 0; i < world->balls_count; ++i) {
-		struct Ball *ball = &world->balls[i];
+	for(uint32_t i = 0; i < world->balls.count; ++i) {
+		struct Ball *ball = (struct Ball *)world->balls.data[i];
 		struct CellList cells_list = world_get_ball_cells(world, ball);
 
 		for(uint32_t j = 0; j < cells_list.size; ++j) {
@@ -83,8 +81,8 @@ void world_simulate(struct World *world, float dt) {
 		free(cells_list.cells);
 	}
 
-	for(uint32_t i = 0; i < world->balls_count; ++i) {
-		struct Ball *a = (struct Ball *)&world->balls[i];
+	for(uint32_t i = 0; i < world->balls.count; ++i) {
+		struct Ball *a = (struct Ball *)world->balls.data[i];
 		const struct Cell *cell = world_get_cell(world, (cell_coords_from_position(a->x, a->y)));
 
 		const uint32_t balls_count = cell->balls.count;
@@ -139,8 +137,8 @@ void world_simulate(struct World *world, float dt) {
 		}
 	}
 
-	for(uint32_t i = 0; i < world->balls_count; ++i) {
-		struct Ball *ball = (struct Ball *)&world->balls[i];
+	for(uint32_t i = 0; i < world->balls.count; ++i) {
+		struct Ball *ball = (struct Ball *)world->balls.data[i];
 		world_update_ball(world, ball, dt);
 	}
 
@@ -150,8 +148,8 @@ void world_simulate(struct World *world, float dt) {
 
 	{
 		struct DebugData *debug_data = debug_get_current_data(&world->game->debug);
-		debug_data->balls_count = world->balls_count;
-		debug_data->balls_capacity = world->balls_capacity;
+		debug_data->balls_count = world->balls.count;
+		debug_data->balls_capacity = world->balls.capacity;
 	}
 	{
 		struct DebugData *debug_data = debug_get_next_data(&world->game->debug);
@@ -187,8 +185,8 @@ void world_render(struct World *world) {
 	struct Timer render_timer;
 	timer_start(&render_timer);
 
-	for(uint32_t i = 0; i < world->balls_count; ++i) {
-		const struct Ball *ball = (void *)&world->balls[i];
+	for(uint32_t i = 0; i < world->balls.count; ++i) {
+		const struct Ball *ball = (const struct Ball *)world->balls.data[i];
 		render_ball(&world->game->render_ctx, ball);
 	}
 
@@ -261,5 +259,5 @@ struct Cell *world_get_cell(struct World *world, struct CellCoords coords) {
 }
 
 void world_print_memory_usage(struct World *world) {
-	printf("world size: %u balls, %u capacity (%lu bytes)\n", world->balls_count, world->balls_capacity, world->balls_capacity * sizeof(struct Ball));
+	printf("world size: %u balls, %u capacity (%lu bytes)\n", world->balls.count, world->balls.capacity, world->balls.capacity * sizeof(struct Ball));
 }
